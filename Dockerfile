@@ -3,7 +3,7 @@ FROM python:3.11-slim
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl ca-certificates gnupg \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs git \
+    && apt-get install -y --no-install-recommends nodejs git docker.io \
     && npm install -g @github/copilot \
     && rm -rf /var/lib/apt/lists/*
 

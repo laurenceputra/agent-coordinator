@@ -27,6 +27,11 @@ class RuntimeConfig:
     medium_plus_worker_profile: str
     codex_worker_command_template: str
     copilot_worker_command_template: str
+    execution_backend: str
+    container_launch_mode: str
+    codex_worker_service: str
+    copilot_worker_service: str
+    docker_compose_cmd: str
 
 
 def _read_int(name: str, default: int, *, min_value: int = 1) -> int:
@@ -40,6 +45,13 @@ def _read_float(name: str, default: float, *, min_value: float = 0.0) -> float:
     value = float(os.environ.get(name, str(default)))
     if value < min_value:
         raise ValueError(f"{name} must be >= {min_value}")
+    return value
+
+
+def _read_choice(name: str, default: str, options: set[str]) -> str:
+    value = os.environ.get(name, default)
+    if value not in options:
+        raise ValueError(f"{name} must be one of {sorted(options)}")
     return value
 
 
@@ -73,4 +85,9 @@ def load_config() -> RuntimeConfig:
             "CMY_COPILOT_WORKER_COMMAND_TEMPLATE",
             "copilot --profile {profile} --task {task_summary_quoted}",
         ),
+        execution_backend=_read_choice("CMY_EXECUTION_BACKEND", "container_per_task", {"local", "container_per_task"}),
+        container_launch_mode=_read_choice("CMY_CONTAINER_LAUNCH_MODE", "host_socket", {"host_socket", "remote_docker_host"}),
+        codex_worker_service=os.environ.get("CMY_CODEX_WORKER_SERVICE", "codex_worker"),
+        copilot_worker_service=os.environ.get("CMY_COPILOT_WORKER_SERVICE", "copilot_worker"),
+        docker_compose_cmd=os.environ.get("CMY_DOCKER_COMPOSE_CMD", "docker compose"),
     )

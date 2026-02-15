@@ -44,6 +44,11 @@ def _config(root: Path) -> RuntimeConfig:
         medium_plus_worker_profile="gpt-5.2-xhigh",
         codex_worker_command_template="echo codex {task_id}",
         copilot_worker_command_template="echo copilot {task_id}",
+        execution_backend="local",
+        container_launch_mode="host_socket",
+        codex_worker_service="codex_worker",
+        copilot_worker_service="copilot_worker",
+        docker_compose_cmd="docker compose",
     )
 
 

@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+from pathlib import Path
+import shlex
+import shutil
+import subprocess
 
-from codex_manager_yolo.config import load_config
+from codex_manager_yolo.config import RuntimeConfig, load_config
 from codex_manager_yolo.manager import ManagerAgent, parse_task, run_interactive_session
 
 
@@ -14,9 +19,35 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _run_preflight_checks(config: RuntimeConfig) -> None:
+    if config.execution_backend != "container_per_task":
+        return
+
+    compose_argv = shlex.split(config.docker_compose_cmd)
+    if not compose_argv:
+        raise RuntimeError("CMY_DOCKER_COMPOSE_CMD must not be empty")
+    if shutil.which(compose_argv[0]) is None:
+        raise RuntimeError(f"Required CLI not found in PATH: {compose_argv[0]}")
+
+    if config.container_launch_mode == "host_socket":
+        socket_path = Path("/var/run/docker.sock")
+        if not socket_path.exists():
+            raise RuntimeError("host_socket launch mode requires /var/run/docker.sock mount")
+
+    if config.container_launch_mode == "remote_docker_host":
+        if not os.environ.get("DOCKER_HOST"):
+            raise RuntimeError("remote_docker_host launch mode requires DOCKER_HOST environment variable")
+
+    version_probe = subprocess.run([*compose_argv, "version"], check=False, capture_output=True, text=True)
+    if version_probe.returncode != 0:
+        stderr = version_probe.stderr.strip() or "unknown error"
+        raise RuntimeError(f"docker compose preflight failed: {stderr}")
+
+
 def main() -> None:
     args = build_parser().parse_args()
     config = load_config()
+    _run_preflight_checks(config)
     manager = ManagerAgent(config)
     if args.no_interactive:
         print(
