@@ -1,0 +1,63 @@
+services:
+  manager:
+    build:
+      context: .
+    image: codex-manager-yolo:latest
+    stdin_open: true
+    tty: true
+    environment:
+      - CMY_PROJECT_ROOT=/workspace
+      - CMY_ARTIFACT_DIR=/workspace/artifacts
+      - CMY_MAX_PARALLEL_WORKERS=${CMY_MAX_PARALLEL_WORKERS:-8}
+      - CMY_RETRY_LIMIT=${CMY_RETRY_LIMIT:-3}
+      - CMY_LOCK_BACKOFF_SECONDS=${CMY_LOCK_BACKOFF_SECONDS:-0.2}
+      - CMY_EXECUTION_BACKEND=${CMY_EXECUTION_BACKEND:-container_per_task}
+      - CMY_CONTAINER_LAUNCH_MODE=${CMY_CONTAINER_LAUNCH_MODE:-host_socket}
+      - CMY_CODEX_WORKER_SERVICE=${CMY_CODEX_WORKER_SERVICE:-codex_worker}
+      - CMY_COPILOT_WORKER_SERVICE=${CMY_COPILOT_WORKER_SERVICE:-copilot_worker}
+      - CMY_DOCKER_COMPOSE_CMD=${CMY_DOCKER_COMPOSE_CMD:-docker compose}
+      - CMY_QUEUE_DIR=/workspace/artifacts/queue
+      - CMY_POOL_POLL_INTERVAL_SECONDS=${CMY_POOL_POLL_INTERVAL_SECONDS:-0.2}
+      - CMY_POOL_RESULT_TIMEOUT_SECONDS=${CMY_POOL_RESULT_TIMEOUT_SECONDS:-300}
+      - CMY_POOL_LEASE_TIMEOUT_SECONDS=${CMY_POOL_LEASE_TIMEOUT_SECONDS:-120}
+    volumes:
+      - ./:/workspace
+      - ${HOME}/.config/gh:/root/.config/gh
+      - ${HOME}/.codex:/root/.codex
+      - ${HOME}/.config/github-copilot:/root/.config/github-copilot
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["codex_manager_yolo"]
+
+  codex_worker:
+    image: codex-manager-yolo:latest
+    profiles: ["workers"]
+    environment:
+      - CMY_PROJECT_ROOT=/workspace
+      - CMY_ARTIFACT_DIR=/workspace/artifacts
+      - CMY_MAX_PARALLEL_WORKERS=${CMY_MAX_PARALLEL_WORKERS:-8}
+      - CMY_RETRY_LIMIT=${CMY_RETRY_LIMIT:-3}
+      - CMY_LOCK_BACKOFF_SECONDS=${CMY_LOCK_BACKOFF_SECONDS:-0.2}
+      - CMY_EXECUTION_BACKEND=local
+    volumes:
+      - ./:/workspace
+      - ${HOME}/.config/gh:/root/.config/gh
+      - ${HOME}/.codex:/root/.codex
+    restart: always
+    command: ["codex_manager_yolo", "--pool-worker", "--pool-worker-type", "codex-cli", "--pool-worker-id", "codex-worker"]
+
+  copilot_worker:
+    image: codex-manager-yolo:latest
+    profiles: ["workers"]
+    environment:
+      - CMY_PROJECT_ROOT=/workspace
+      - CMY_ARTIFACT_DIR=/workspace/artifacts
+      - CMY_MAX_PARALLEL_WORKERS=${CMY_MAX_PARALLEL_WORKERS:-8}
+      - CMY_RETRY_LIMIT=${CMY_RETRY_LIMIT:-3}
+      - CMY_LOCK_BACKOFF_SECONDS=${CMY_LOCK_BACKOFF_SECONDS:-0.2}
+      - CMY_EXECUTION_BACKEND=local
+    volumes:
+      - ./:/workspace
+      - ${HOME}/.config/gh:/root/.config/gh
+      - ${HOME}/.config/github-copilot:/root/.config/github-copilot
+    restart: always
+    command: ["codex_manager_yolo", "--pool-worker", "--pool-worker-type", "copilot-cli", "--pool-worker-id", "copilot-worker"]
